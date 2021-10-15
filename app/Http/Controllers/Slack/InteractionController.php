@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Slack;
 
 use App\Http\Controllers\Controller;
 use App\Slack\SlackClient;
+use App\Models\Thread;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -76,7 +77,6 @@ class InteractionController extends Controller
 
     public function handleViewSubmission($data)
     {
-
         //Token
         $authorization = 'Bearer ' . strval(env("SLACK_BOT_USER_TOKEN"));
 
@@ -86,11 +86,10 @@ class InteractionController extends Controller
         foreach ($selector[0] as $key => $value) {
             array_push($selectedId, $key);
         }
-        $content = Arr::get($data, 'view.blocks.4.text.text');
         $viewId = Arr::get($data, 'view.id');
         $viewHash = Arr::get($data, 'view.hash');
         $teamId = Arr::get($data, 'team.id');
-        $importer = Arr::get($data, 'user.id');
+        $message = Arr::get($data, 'view.blocks.4.text.text');
 
         //Getting data from modal
         $info = Arr::get($data, 'view.blocks.6.text.text');
@@ -112,20 +111,26 @@ class InteractionController extends Controller
         $link = [];
         $ids = [];
 
-        //Getting the user who made the import
+        //Getting the author name
         //Users.info method
         $usersInfo = Http::withHeaders([
             'Authorization' => $authorization,
         ])->asForm()->post('https://slack.com/api/users.info', [
-            'user' => $importer
+            'user' => $user
         ]);
 
         $userData = collect(json_decode($usersInfo, true));
-        $importerName = Arr::get($userData, 'user.profile.real_name_normalized');
-        $importerEmail = Arr::get($userData, 'user.profile.email');
+        log::debug($userData);
+        $author = Arr::get($userData, 'user.profile.real_name_normalized');
 
-        //Append importer name into content
-        $content = $content . "\n\nThis conversation was imported from Slack by ". $importerName;
+        //Creating thread in database
+        $thread = new Thread([
+          'author' => $author,
+          'message' => $message
+        ]);
+
+        log::debug($thread);
+        $thread->save();
 
         //Getting the author email
         //Users.info method
@@ -235,7 +240,6 @@ class InteractionController extends Controller
         $channel = Arr::get($data, 'channel.id');
         $ts = Arr::get($data, 'message.thread_ts');
         $message = Arr::get($data, 'message.text');
-        $userId = Arr::get($data, 'user.id');
         $teamId = Arr::get($data, 'team.id');
         $originalAuthor = Arr::get($data, 'message.user');
         $file = Arr::get($data, 'message.files');
@@ -278,7 +282,7 @@ class InteractionController extends Controller
                 'Authorization' => $authorization,
             ])->asForm()->post('https://slack.com/api/chat.postEphemeral', [
                 'channel' => $channel,
-                'user' => $userId,
+                'user' => $originalAuthor,
                 'text' => 'olá',
                 'blocks' => '[
 		            {
@@ -296,7 +300,7 @@ class InteractionController extends Controller
         $usersInfo = Http::withHeaders([
             'Authorization' => $authorization,
         ])->asForm()->post('https://slack.com/api/users.info', [
-            'user' => $userId
+            'user' => $originalAuthor
         ]);
 
         $userData = collect(json_decode($usersInfo, true));
@@ -307,7 +311,7 @@ class InteractionController extends Controller
             $usersProfile = Http::withHeaders([
                 'Authorization' => $authorization,
             ])->asForm()->post('https://slack.com/api/users.profile.get', [
-                'user' => $userId
+                'user' => $originalAuthor
             ]);
 
             $userProfile = collect(json_decode($usersProfile, true));
@@ -369,11 +373,11 @@ class InteractionController extends Controller
 			                "type": "section",
 			                "text": {
 				                "type": "mrkdwn",
-				                "text": "*Author*\n*'.$userId.'*\nChannel ID: '.$channel.'\nTS: '.$ts.'"
+				                "text": "*Author*\n*'.$originalAuthor.'*\nChannel ID: '.$channel.'\nTS: '.$ts.'"
 			                },
 			                "accessory": {
 				                "type": "image",
-				                "image_url": "https://ca.slack-edge.com/'.$teamId.'-'.$userId.'-'.$avatarHash.'-512",
+				                "image_url": "https://ca.slack-edge.com/'.$teamId.'-'.$originalAuthor.'-'.$avatarHash.'-512",
 				                "alt_text": "Redwood Suite"
 			                }
 		                },
