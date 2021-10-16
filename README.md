@@ -66,8 +66,10 @@ Bot Token Scopes: `im:read`, `im:write`, `mpim:history`, `mpim:read`, `mpim:writ
 User Token Scopes: `channels:write`, `files:read`, `groups:write`, `im:write`, `mpim:write` 
 
 • Into InteracionController.php, setup your interaction command and fill the message_action case inside _invoke function with the callback_id.
+    
+Now you can export your conversations into your application. The threads will be indexed into the application homepage by opening the options tab of any message into your workspace, calling the interaction button and submitting the modal.
 
-The App will only receive the payloads if you have a proper URL (Serving your application in localhost will not work). I suggest using Ngrok to create a temporary domain if you don't have one.
+* The App will only receive the payloads if you have a proper URL (Serving your application in localhost will not work). I suggest using Ngrok to create a temporary domain if you don't have one.
 
 <footer>
    <hr></hr>
