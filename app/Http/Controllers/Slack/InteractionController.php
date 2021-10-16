@@ -120,7 +120,6 @@ class InteractionController extends Controller
         ]);
 
         $userData = collect(json_decode($usersInfo, true));
-        log::debug($userData);
         $author = Arr::get($userData, 'user.profile.real_name_normalized');
 
         //Creating thread in database
@@ -129,7 +128,6 @@ class InteractionController extends Controller
           'message' => $message
         ]);
 
-        log::debug($thread);
         $thread->save();
 
         //Getting the author email
