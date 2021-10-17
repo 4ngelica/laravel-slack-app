@@ -11,7 +11,7 @@
         @foreach ($threads as $key => $thread)
           <tr>
             <td>{{$thread->id}}</td>
-            <td>{{$thread->message}}</td>
+            <td>{!!($thread->message)!!}</td>
             <td>{{$thread->author}}</td>
           </tr>
         @endforeach

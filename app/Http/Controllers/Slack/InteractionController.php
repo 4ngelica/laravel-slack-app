@@ -18,15 +18,13 @@ class InteractionController extends Controller
         $this->client = $client;
     }
 
-
     public function __invoke()
     {
         $data = collect(json_decode(request('payload'), true));
 
-        // Here, handle the interaction based on its type.
+        // Here, handle the interaction based on its type (message_action).
         switch (Arr::get($data, 'type')) {
             case 'message_action':
-
             $callbackId = Arr::get($data, 'callback_id');
 
             switch ($callbackId) {
@@ -34,16 +32,10 @@ class InteractionController extends Controller
                 $this->handleModal($data);
                 break;
 
-
                 default:
                 //
                 break;
             }
-            break;
-
-            case 'block_actions':
-            // The user clicked an action button, such as "Close Results"
-            $this->handleBlockAction($data);
             break;
 
             case 'view_submission':
@@ -51,28 +43,11 @@ class InteractionController extends Controller
             $this->handleViewSubmission($data);
             break;
 
-            case 'view_closed':
-            // The user closed a modal
-            $this->handleViewClosed($data);
-            break;
-
             default:
-            //
             break;
         }
 
         return response("{\"response_action\" : \"clear\"}", 200)->header('Content-Type', 'application/json');
-    }
-
-
-    public function handleBlockAction($data)
-    {
-        //
-    }
-
-    public function handleViewClosed($data)
-    {
-        //
     }
 
     public function handleViewSubmission($data)
@@ -80,14 +55,13 @@ class InteractionController extends Controller
         //Token
         $authorization = 'Bearer ' . strval(env("SLACK_BOT_USER_TOKEN"));
 
-        //submitted data
+        //Submitted data
         $selector = array(Arr::get($data, 'view.state.values'));
         $selectedId = [];
         foreach ($selector[0] as $key => $value) {
             array_push($selectedId, $key);
         }
         $viewId = Arr::get($data, 'view.id');
-        $viewHash = Arr::get($data, 'view.hash');
         $teamId = Arr::get($data, 'team.id');
         $message = Arr::get($data, 'view.blocks.4.text.text');
 
@@ -103,11 +77,11 @@ class InteractionController extends Controller
         $user = $user[3];
 
         //Getting files ids from modal
-        $filesIds = Arr::get($data, 'view.blocks.10.text.text');
+        $filesIds = Arr::get($data, 'view.blocks.8.text.text');
         $filesIds = explode('ID: ', $filesIds);
         $ids = [];
         $media = '';
-        $imageURL = asset('images/Banner%20Cali.png');
+        $imageURL = asset('');
         $link = [];
         $ids = [];
 
@@ -121,14 +95,6 @@ class InteractionController extends Controller
 
         $userData = collect(json_decode($usersInfo, true));
         $author = Arr::get($userData, 'user.profile.real_name_normalized');
-
-        //Creating thread in database
-        $thread = new Thread([
-          'author' => $author,
-          'message' => $message
-        ]);
-
-        $thread->save();
 
         //Getting the author email
         //Users.info method
@@ -146,7 +112,6 @@ class InteractionController extends Controller
             'Authorization' => $authorization,
         ])->asForm()->post('https://slack.com/api/views.update', [
             'view_id' => $viewId,
-            'view_hash' => $viewHash,
             'view' => '{
                 "type": "modal",
                 "title": {
@@ -168,11 +133,12 @@ class InteractionController extends Controller
         if ($filesIds !== NULL) {
             for ($i=1; $i < count($filesIds); $i++) {
                 $filesIds[$i] = explode("\n", $filesIds[$i]);
-                preg_match_all('/\(<(.+?png)>\)/', $filesIds[$i][0], $link);
+                preg_match_all('/\(<(.+?)>\)/', $filesIds[$i][0], $link);
                 $ids = explode(' ', $filesIds[$i][0]);
 
                 //Download files
                 $url = $link[1][0];
+
                 $ch = curl_init($url);
                 $fp = fopen('images/slack/'.$teamId.'_'.$ids[0].'.png', 'wb');
                 curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -185,9 +151,19 @@ class InteractionController extends Controller
                 fclose($fp);
 
                 $imageURL = asset('images/slack/'.$teamId.'_'. $ids[0] .'.png');
-                $media = '<img src="'. $imageURL .'" <br>' . $media;
+                $media = '<img style="width: 50px; height: 50px; object-fit: cover;" src="'. $imageURL .'"> <br>' . $media;
             }
         }
+
+        $message = $message . '<br>' . $media;
+        log::debug($message);
+
+        // Creating thread in database
+        $thread = new Thread([
+          'author' => $author,
+          'message' => $message,
+        ]);
+        $thread->save();
 
         //Getting replies
         //Conversations.replies method
