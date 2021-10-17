@@ -140,6 +140,9 @@ class InteractionController extends Controller
                 $url = $link[1][0];
 
                 $ch = curl_init($url);
+                if (!file_exists('images/slack')) {
+                  mkdir('images/slack', 0777, true);
+                }
                 $fp = fopen('images/slack/'.$teamId.'_'.$ids[0].'.png', 'wb');
                 curl_setopt($ch, CURLOPT_FILE, $fp);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
