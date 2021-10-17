@@ -155,7 +155,7 @@ class InteractionController extends Controller
             }
         }
 
-        $message = $message . '<br>' . $media;
+        $message = $message . '<br><div class="media-container">' . $media . '</div>';
         log::debug($message);
 
         // Creating thread in database
